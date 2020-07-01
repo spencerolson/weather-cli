@@ -72,7 +72,7 @@ class WeatherApi
   end
 
   def general_help
-    ["Options: #{@options.join(", ")}"]
+    ["Options: #{@options.join(", ")}", "", "To get more info for a particular option, try `weather help <option>`."]
   end
 
   def current_weather
