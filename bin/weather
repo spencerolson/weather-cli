@@ -1,0 +1,5 @@
+#!/bin/bash
+
+SCRIPTDIR="$(dirname "$(readlink "$0")")"
+
+ruby ${SCRIPTDIR}/../weather.rb "$@"
