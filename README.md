@@ -25,6 +25,6 @@ export MY_HOME_LONG='-27.193193'
 5. Add the binary to your PATH or create a soft-link to it from a directory that's already in your path:
 ```
 cd ~/bin
-ln -s ~/path/to/weather-cli/weather
+ln -s ~/path/to/weather-cli/bin/weather
 ```
 6. Try `weather` or `weather help`
