@@ -93,15 +93,17 @@ class WeatherApi
   end
 
   def minutely_precip_info
-    response_data = weather_response("onecall", "exclude=daily,hourly,current")
+    response_data = weather_response("onecall", "exclude=daily,current&units=imperial")
     puts "raw precip response: #{response_data.inspect}" if @debug_mode
     minutes = format_minutes(response_data)
+    hours = format_hours(response_data)
     streaks = create_streaks(minutes)
-    rain_summary = rain_summary(streaks)
+    rain_summary = rain_summary(streaks, hours)
 
     {
       minutes: minutes,
       streaks: streaks,
+      hours: hours,
       summary: show_graph(streaks) ? [graph(minutes), "", rain_summary, ""] : [rain_summary, ""]
     }
   end
@@ -181,19 +183,30 @@ class WeatherApi
     graph.map { |graph_row| graph_row.join }
   end
 
-  def rain_summary(streaks)
+  def rain_summary(streaks, hours)
     if @show_lat_long && !show_graph(streaks)
       puts location
     end
 
-    streaks.map do |streak|
+    minutely_streaks = streaks.map do |streak|
       base = "#{emoji(streak[:label])} #{streak[:from]} - #{streak[:to]}"
       if streak[:label] == "Rain"
         base + " (#{rain_intensity_avg(streak)})"
       else
         base
       end
-    end.join("\n")
+    end
+
+    hourly_temps = hours.map.with_index do |info, index|
+      if index == 0
+        "#{info[:temp]}°"
+      else
+        arrow = hours[index - 1][:temp] > info[:temp] ? "⬇" : "⬆"
+        "#{arrow}  #{info[:temp]}°"
+      end
+    end.join(" ")
+
+    [hourly_temps, ""].concat(minutely_streaks).join("\n")
   end
 
   def location
@@ -257,13 +270,23 @@ class WeatherApi
     end
   end
 
-  def friendly_stamp(timestamp)
-    time = Time.at(timestamp).to_datetime
-    time_of_day(time)
+  def format_hours(response)
+    response["hourly"].map.with_index do |hour_data, index|
+      {
+        index: index,
+        time: friendly_stamp(hour_data["dt"], false),
+        temp: hour_data["temp"].to_i
+      }
+    end[0..12].select { |data| data[:index] % 3 == 0 }
   end
 
-  def time_of_day(time)
-    time.strftime("%I:%M%p")
+  def friendly_stamp(timestamp, minutes = true)
+    time = Time.at(timestamp).to_datetime
+    time_of_day(time, minutes)
+  end
+
+  def time_of_day(time, minutes)
+    minutes ? time.strftime("%-I:%M%p") : time.strftime("%-I%p")
   end
 
   def rain_intensity_avg(streak)
