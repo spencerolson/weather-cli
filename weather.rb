@@ -80,7 +80,7 @@ class WeatherApi
     puts "raw weather response: #{response_data.inspect}" if @debug_mode
     weather = response_data["weather"][0] || {}
     description = weather["description"]
-    temp = response_data.dig("main", "feels_like")
+    temp = response_data.dig("main", "temp")
     humidity = response_data.dig("main", "humidity")
     summary = ["#{temp}° | #{description} | #{humidity}% humidity"]
 
