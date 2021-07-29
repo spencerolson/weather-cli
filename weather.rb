@@ -7,9 +7,10 @@ class WeatherApi
     @debug_mode = args.include? "debug"
     @watch_mode = args.include? "watch"
     @hide_graph = args.include? "nograph"
+    @hide_alerts = args.include? "noalerts"
     @show_graph = args.include? "graph"
     @show_lat_long = args.include? "location"
-    @options = %w(watch location nograph graph debug help)
+    @options = %w(watch location nograph noalerts graph debug help)
     @show_help = args.include? "help"
     @show_help_option = (args[1..-1] || []).find { |arg| @options.include?(arg) }
   end
@@ -63,6 +64,7 @@ class WeatherApi
       "watch" => "Refresh the data once every 90 seconds.",
       "location" => "Include latitude and longitude in the output.",
       "nograph" => "Never include the precipitation chart (default is to only include the chart if rain is expected in the next hour).",
+      "noalerts" => "Hide weather alerts (default is to show them, if they exist).",
       "graph" => "Always include the precipitation chart (default is to only include the chart if rain is expected in the next hour).",
       "debug" => "Show detailed debugging information, such as raw response data from OpenWeatherApi requests.",
       "help" => "Show the available options."
@@ -119,7 +121,7 @@ class WeatherApi
 
   def alerts_summary(response_data)
     alerts = response_data.fetch('alerts', [])
-    return "" if alerts.empty?
+    return "" if alerts.empty? || @hide_alerts
 
     alerts.map do |alert|
       header_footer = "<<< #{alert['event']} >>>"
