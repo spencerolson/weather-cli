@@ -47,7 +47,7 @@ class WeatherApi
     end
 
     {
-      summary: minutely_precip_info[:summary].concat(current_weather[:summary]),
+      summary: minutely_precip_info[:summary],
       break: false
     }
   end
@@ -99,13 +99,32 @@ class WeatherApi
     hours = format_hours(response_data)
     streaks = create_streaks(minutes)
     rain_summary = rain_summary(streaks, hours)
+    alerts = alerts_summary(response_data)
+
+    summary = if show_graph(streaks)
+      [graph(minutes), "", rain_summary, ""].concat(current_weather[:summary])
+    else
+      [rain_summary, ""].concat(current_weather[:summary])
+    end
+
+    summary.concat(["", alerts]) unless alerts.empty?
 
     {
       minutes: minutes,
       streaks: streaks,
       hours: hours,
-      summary: show_graph(streaks) ? [graph(minutes), "", rain_summary, ""] : [rain_summary, ""]
+      summary: summary
     }
+  end
+
+  def alerts_summary(response_data)
+    alerts = response_data.fetch('alerts', [])
+    return "" if alerts.empty?
+
+    alerts.map do |alert|
+      header_footer = "<<< #{alert['event']} >>>"
+      "#{header_footer}\n\n#{alert['description']}\n\n#{header_footer}\n\n"
+    end.join
   end
 
   def weather_response(route, query_params = nil)
@@ -198,15 +217,40 @@ class WeatherApi
     end
 
     hourly_temps = hours.map.with_index do |info, index|
+      temp = info[:temp]
+
+      case temp.length
+      when 3
+        buffer = ''
+        pre_buffer = ''
+      when 2
+        buffer = ' '
+        pre_buffer = ''
+      when 1
+        buffer = ' '
+        pre_buffer = ' '
+      end
+
       if index == 0
-        "#{info[:temp]}°"
+        "#{pre_buffer}#{temp}°#{buffer}"
       else
-        arrow = hours[index - 1][:temp] > info[:temp] ? "⬇" : "⬆"
-        "#{arrow}  #{info[:temp]}°"
+        if hours[index - 1][:temp] == temp
+          arrow = "➡"
+        else
+          arrow = hours[index - 1][:temp] > temp ? "⬇" : "⬆"
+        end
+
+        "#{arrow}  #{pre_buffer}#{temp}°#{buffer}"
       end
     end.join(" ")
 
-    [hourly_temps, ""].concat(minutely_streaks).join("\n")
+    hourly_times = hours.map do |info|
+      time = info[:time]
+      buffer = ' ' * (time.length < 4 ? 1 : 0)
+      "#{time}#{buffer}"
+    end.join("    ")
+
+    [hourly_temps, hourly_times, ""].concat(minutely_streaks).join("\n")
   end
 
   def location
@@ -275,7 +319,7 @@ class WeatherApi
       {
         index: index,
         time: friendly_stamp(hour_data["dt"], false),
-        temp: hour_data["temp"].to_i
+        temp: hour_data["temp"].to_i.to_s
       }
     end[0..12].select { |data| data[:index] % 3 == 0 }
   end
@@ -285,7 +329,7 @@ class WeatherApi
     time_of_day(time, minutes)
   end
 
-  def time_of_day(time, minutes)
+  def time_of_day(time, minutes = false)
     minutes ? time.strftime("%-I:%M%p") : time.strftime("%-I%p")
   end
 
