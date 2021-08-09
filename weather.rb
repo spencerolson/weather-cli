@@ -88,7 +88,7 @@ class WeatherApi
 
     if @debug_mode
       summary << ""
-      summary << "[Ran at #{time_of_day(Time.now)}]"
+      summary << "[Ran at #{time_of_day(Time.now, true)}]"
     end
 
     { summary: summary }
